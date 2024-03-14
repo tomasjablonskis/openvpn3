@@ -58,34 +58,19 @@ namespace ManClientInstance {
 
 // Base class for the per-client-instance state of the ManServer.
 // Each client instance uses this class to send data to the man layer.
-struct Send : public virtual RC<thread_unsafe_refcount>
+// The methods here are VPN protocol agnostic.
+struct SendBase : public virtual RC<thread_unsafe_refcount>
 {
-    typedef RCPtr<Send> Ptr;
-
-    virtual void pre_stop() = 0;
-    virtual void stop() = 0;
+    typedef RCPtr<SendBase> Ptr;
 
     // clang-format off
-    virtual void auth_request(const AuthCreds::Ptr &auth_creds,
-                              const AuthCert::Ptr &auth_cert,
-                              const PeerAddr::Ptr &peer_addr) = 0;
-    virtual void push_request(ProtoContext::Config::Ptr pconf) = 0;
-
-    // INFO notification
-    virtual void info_request(const std::string &imsg) = 0;
-
-    // bandwidth stats notification
-    virtual void stats_notify(const PeerStats &ps, const bool final) = 0;
-
-    // client float notification
-    virtual void float_notify(const PeerAddr::Ptr &addr) = 0;
-
-    // IP-mapped ACL (IPMA) notification
-    virtual void ipma_notify(const struct ovpn_tun_head_ipma &ipma) = 0;
 
     // ID
     virtual std::string instance_name() const = 0;
     virtual std::uint64_t instance_id() const = 0;
+
+    // IP-mapped ACL (IPMA) notification
+    virtual void ipma_notify(const struct ovpn_tun_head_ipma &ipma) = 0;
 
     // return a JSON string describing connected user
     virtual std::string describe_user(const bool show_userprop) = 0;
@@ -94,10 +79,7 @@ struct Send : public virtual RC<thread_unsafe_refcount>
     virtual void disconnect_user(const HaltRestart::Type type,
                                  const AuthStatus::Type auth_status,
                                  const std::string &reason,
-                                 const bool tell_client) = 0;
-
-    // send control channel message
-    virtual void post_info_user(BufferPtr &&info) = 0;
+                                 const std::string &client_reason) = 0;
 
     // set ACL index for user
     virtual void set_acl_index(const int acl_index,
@@ -109,6 +91,36 @@ struct Send : public virtual RC<thread_unsafe_refcount>
 
     // create, update, or delete a DOMA ACL
     virtual Json::Value doma_acl(const Json::Value &root) = 0;
+
+    // send a control channel message to client
+    virtual void post_info_user(BufferPtr &&info) = 0;
+
+    // clang-format on
+};
+
+// Send builds on SendBase but also adds OpenVPN
+// protocol-specific methods.
+struct Send : public SendBase
+{
+    typedef RCPtr<Send> Ptr;
+
+    virtual void pre_stop() = 0;
+    virtual void stop() = 0;
+
+    // clang-format off
+    virtual void auth_request(const AuthCreds::Ptr &auth_creds,
+                              const AuthCert::Ptr &auth_cert,
+                              const PeerAddr::Ptr &peer_addr) = 0;
+    virtual void push_request(ProtoContext::ProtoConfig::Ptr pconf) = 0;
+
+    /** app control message */
+    virtual void app_control(const std::string &msg) = 0;
+
+    // bandwidth stats notification
+    virtual void stats_notify(const PeerStats &ps, const bool final) = 0;
+
+    // client float notification
+    virtual void float_notify(const PeerAddr::Ptr &addr) = 0;
 
     // override keepalive parameters
     virtual void keepalive_override(unsigned int &keepalive_ping,
@@ -128,14 +140,14 @@ struct Recv : public virtual RC<thread_unsafe_refcount>
 
     // clang-format off
     virtual void auth_failed(const std::string &reason,
-                             const bool tell_client) = 0;
+                             const std::string &client_reason) = 0;
 
     virtual void push_reply(std::vector<BufferPtr> &&push_msgs) = 0;
 
     // push a halt or restart message to client
     virtual void push_halt_restart_msg(const HaltRestart::Type type,
                                        const std::string &reason,
-                                       const bool tell_client) = 0;
+                                       const std::string &client_reason) = 0;
     // clang-format on
 
     // send control channel message
@@ -167,7 +179,7 @@ struct Factory : public RC<thread_unsafe_refcount>
     virtual void start() = 0;
     virtual void stop() = 0;
 
-    virtual Send::Ptr new_obj(Recv *instance) = 0;
+    virtual Send::Ptr new_man_obj(Recv *instance) = 0;
 };
 
 } // namespace ManClientInstance

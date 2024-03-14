@@ -168,10 +168,18 @@ class RemoteList : public RC<thread_unsafe_refcount>
                 res_addr_list.reset(new ResolvedAddrList());
                 for (const auto &i : endpoint_range)
                 {
+                    std::string ep_af = "(unspec)";
+                    if (i.endpoint().address().is_v6())
+                        ep_af = "IPv6";
+                    else if (i.endpoint().address().is_v4())
+                        ep_af = "IPv4";
                     // Skip addresses with incompatible family
                     if ((transport_protocol.is_ipv6() && i.endpoint().address().is_v4())
                         || (transport_protocol.is_ipv4() && i.endpoint().address().is_v6()))
+                    {
+                        OPENVPN_LOG("Endpoint address family (" << ep_af << ") is incompatible with transport protocol (" << transport_protocol.protocol_to_string() << ")");
                         continue;
+                    }
                     ResolvedAddr::Ptr addr(new ResolvedAddr());
                     addr->addr = IP::Addr::from_asio(i.endpoint().address());
                     res_addr_list->push_back(addr);
@@ -962,7 +970,7 @@ class RemoteList : public RC<thread_unsafe_refcount>
             // Throws if server_host is not an IP address
             IP::Addr(item.server_host);
         }
-        catch (const IP::ip_exception &e)
+        catch (const IP::ip_exception &)
         {
             // Produce 6 bytes of random prefix data
             unsigned char prefix[6];

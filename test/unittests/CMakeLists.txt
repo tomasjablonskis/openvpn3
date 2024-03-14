@@ -13,9 +13,6 @@ if (NOT BUILD_TESTING)
   return()
 endif()
 
-
-# current latest GTEST version
-set(OVPN_GTEST_VERSION release-1.11.0)
 include(dlgoogletest)
 
 set(CORE_TEST_DEFINES
@@ -27,12 +24,14 @@ set(CORE_TEST_DEFINES
 
 add_executable(coreUnitTests
         core_tests.cpp
+        test_acc.cpp
         test_route_emulation.cpp
         test_log.cpp
         test_comp.cpp
         test_b64.cpp
         test_verify_x509_name.cpp
         test_ssl.cpp
+        test_sslctx.cpp
         test_continuation.cpp
         test_crypto.cpp
         test_optfilt.cpp
@@ -59,13 +58,16 @@ add_executable(coreUnitTests
         test_path.cpp
         test_pktid.cpp
         test_prefixlen.cpp
+        test_randapi.cpp
         test_rc.cpp
         test_route.cpp
-	test_reliable.cpp
+        test_reliable.cpp
+        test_splitlines.cpp
         test_statickey.cpp
         test_streq.cpp
         test_time.cpp
         test_typeindex.cpp
+        test_userpass.cpp
         test_validatecreds.cpp
         test_weak.cpp
         test_cliopt.cpp
@@ -100,6 +102,7 @@ else ()
             test_openssl_x509certinfo.cpp
             test_openssl_authcert.cpp
             test_opensslpki.cpp
+            test_openssl_misc.cpp
             test_session_id.cpp
             )
 endif ()
@@ -121,6 +124,9 @@ if (UNIX)
 
       # Uses Unix Pipe semantics
       test_pipe.cpp
+
+      # for now, only for ovpn3 servers (i.e., pgserv)
+      test_psid_cookie.cpp
       )
 endif ()
 

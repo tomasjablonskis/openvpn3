@@ -56,6 +56,7 @@ enum Type
     ADD_ROUTES,
     ECHO_OPT,
     INFO,
+    CUSTOM_CONTROL,
 #ifdef HAVE_JSON
     INFO_JSON,
 #endif
@@ -89,6 +90,8 @@ enum Type
     EPKI_ERROR,         // EPKI refers to External PKI errors, i.e. errors in accessing external
     EPKI_INVALID_ALIAS, //    certificates or keys.
     RELAY_ERROR,
+    COMPRESS_ERROR,
+    NTLM_MISSING_CRYPTO,
 
     N_TYPES
 };
@@ -115,6 +118,7 @@ inline const char *event_name(const Type type)
         "ADD_ROUTES",
         "ECHO",
         "INFO",
+        "CUSTOM_CONTROL",
 #ifdef HAVE_JSON
         "INFO_JSON",
 #endif
@@ -148,7 +152,8 @@ inline const char *event_name(const Type type)
         "EPKI_ERROR",
         "EPKI_INVALID_ALIAS",
         "RELAY_ERROR",
-    };
+        "COMPRESS_ERROR",
+        "NTLM_MISSING_CRYPTO"};
 
     static_assert(N_TYPES == array_size(names), "event names array inconsistency");
     if (type < N_TYPES)
@@ -164,6 +169,7 @@ class Base : public RC<thread_safe_refcount>
 {
   public:
     typedef RCPtr<Base> Ptr;
+    virtual ~Base() = default;
     Base(Type id)
         : id_(id)
     {
@@ -485,6 +491,14 @@ struct RelayError : public ReasonBase
     }
 };
 
+struct CompressError : public ReasonBase
+{
+    CompressError(std::string reason)
+        : ReasonBase(COMPRESS_ERROR, std::move(reason))
+    {
+    }
+};
+
 struct DynamicChallenge : public ReasonBase
 {
     DynamicChallenge(std::string reason)
@@ -505,6 +519,14 @@ struct ProxyError : public ReasonBase
 {
     ProxyError(std::string reason)
         : ReasonBase(PROXY_ERROR, std::move(reason))
+    {
+    }
+};
+
+struct NtlmMissingCryptoError : public ReasonBase
+{
+    NtlmMissingCryptoError(std::string reason)
+        : ReasonBase(NTLM_MISSING_CRYPTO, std::move(reason))
     {
     }
 };
@@ -587,6 +609,19 @@ struct Info : public ReasonBase
         : ReasonBase(INFO, std::move(value))
     {
     }
+};
+
+/**
+ * Message to signal a custom app control message from the peer
+ */
+struct AppCustomControlMessage : public Base
+{
+    AppCustomControlMessage(std::string protocol, std::string message)
+        : Base(CUSTOM_CONTROL), protocol(std::move(protocol)), custommessage(std::move(message))
+    {
+    }
+    std::string protocol;
+    std::string custommessage;
 };
 
 struct AuthPending : public ReasonBase

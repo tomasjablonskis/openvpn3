@@ -54,6 +54,7 @@
 
 #include <openvpn/common/platform.hpp>
 #include <openvpn/common/base64.hpp>
+#include <openvpn/common/numeric_cast.hpp>
 #include <openvpn/common/olong.hpp>
 #include <openvpn/common/arraysize.hpp>
 #include <openvpn/common/hostport.hpp>
@@ -507,7 +508,7 @@ class HTTPCore : public Base, public TransportClientParent
             if (socket)
                 return socket->remote_endpoint_str();
         }
-        catch (const std::exception &e)
+        catch (const std::exception &)
         {
         }
         return "[unknown endpoint]";
@@ -633,7 +634,7 @@ class HTTPCore : public Base, public TransportClientParent
     }
 
   private:
-    typedef TCPTransport::Link<AsioProtocol, HTTPCore *, false> LinkImpl;
+    typedef TCPTransport::TCPLink<AsioProtocol, HTTPCore *, false> LinkImpl;
     friend LinkImpl::Base; // calls tcp_* handlers
 
     void verify_frame()
@@ -850,8 +851,8 @@ class HTTPCore : public Base, public TransportClientParent
 
             openvpn_io::async_connect(s->socket,
                                       std::move(results),
-                                      [self = Ptr(this)](const openvpn_io::error_code &error, const openvpn_io::ip::tcp::endpoint &endpoint)
-                                      { self->handle_tcp_connect(error, endpoint); });
+                                      [self = Ptr(this)](const openvpn_io::error_code &error_, const openvpn_io::ip::tcp::endpoint &endpoint)
+                                      { self->handle_tcp_connect(error_, endpoint); });
         }
         catch (const std::exception &e)
         {
@@ -938,8 +939,9 @@ class HTTPCore : public Base, public TransportClientParent
         IP::Addr addr = sf.remote_ip();
         if (!addr.defined())
             addr = IP::Addr(host.host_transport(), "AltRouting");
+        // TODO: the static_cast of port is not proven safe
         results_type results = results_type::create(openvpn_io::ip::tcp::endpoint(addr.to_asio(),
-                                                                                  port),
+                                                                                  static_cast<asio::ip::port_type>(port)),
                                                     host.host,
                                                     "");
 

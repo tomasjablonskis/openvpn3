@@ -141,7 +141,7 @@ class TunBuilderCapture : public TunBuilderBase, public RC<thread_unsafe_refcoun
     {
       public:
         std::string address;
-        int prefix_length = 0;
+        unsigned char prefix_length = 0;
         int metric = -1;     // optional
         std::string gateway; // optional
         bool ipv6 = false;
@@ -179,7 +179,7 @@ class TunBuilderCapture : public TunBuilderBase, public RC<thread_unsafe_refcoun
         {
             json::assert_dict(root, title);
             json::to_string(root, address, "address", title);
-            json::to_int(root, prefix_length, "prefix_length", title);
+            json::to_uchar(root, prefix_length, "prefix_length", title);
             json::to_int(root, metric, "metric", title);
             json::to_string(root, gateway, "gateway", title);
             json::to_bool(root, ipv6, "ipv6", title);
@@ -458,14 +458,14 @@ class TunBuilderCapture : public TunBuilderBase, public RC<thread_unsafe_refcoun
     {
         RouteAddress r;
         r.address = address;
-        r.prefix_length = prefix_length;
+        r.prefix_length = static_cast<unsigned char>(prefix_length);
         r.gateway = gateway;
         r.ipv6 = ipv6;
         r.net30 = net30;
         if (ipv6)
-            tunnel_address_index_ipv6 = (int)tunnel_addresses.size();
+            tunnel_address_index_ipv6 = static_cast<int>(tunnel_addresses.size());
         else
-            tunnel_address_index_ipv4 = (int)tunnel_addresses.size();
+            tunnel_address_index_ipv4 = static_cast<int>(tunnel_addresses.size());
         tunnel_addresses.push_back(r);
         return true;
     }
@@ -488,7 +488,7 @@ class TunBuilderCapture : public TunBuilderBase, public RC<thread_unsafe_refcoun
     {
         Route r;
         r.address = address;
-        r.prefix_length = prefix_length;
+        r.prefix_length = static_cast<unsigned char>(prefix_length);
         r.metric = metric;
         r.ipv6 = ipv6;
         add_routes.push_back(r);
@@ -499,7 +499,7 @@ class TunBuilderCapture : public TunBuilderBase, public RC<thread_unsafe_refcoun
     {
         Route r;
         r.address = address;
-        r.prefix_length = prefix_length;
+        r.prefix_length = static_cast<unsigned char>(prefix_length);
         r.metric = metric;
         r.ipv6 = ipv6;
         exclude_routes.push_back(r);

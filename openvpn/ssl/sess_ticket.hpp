@@ -57,7 +57,7 @@ class TLSSessionTicketBase
       public:
         static constexpr size_t SIZE = 16;
 
-        explicit Name(RandomAPI &rng)
+        explicit Name(StrongRandomAPI &rng)
         {
             rng.rand_bytes(value_, SIZE);
         }
@@ -104,7 +104,7 @@ class TLSSessionTicketBase
         }
 
 #ifdef USE_OPENVPN_HASH
-        std::size_t hashval() const
+        std::uint64_t hashval() const
         {
             Hash64 h;
             hash(h);
@@ -130,9 +130,8 @@ class TLSSessionTicketBase
         static constexpr size_t CIPHER_KEY_SIZE = 32;
         static constexpr size_t HMAC_KEY_SIZE = 16;
 
-        explicit Key(RandomAPI &rng)
+        explicit Key(StrongRandomAPI &rng)
         {
-            rng.assert_crypto();
             rng.rand_bytes(cipher_value_, CIPHER_KEY_SIZE);
             rng.rand_bytes(hmac_value_, HMAC_KEY_SIZE);
         }

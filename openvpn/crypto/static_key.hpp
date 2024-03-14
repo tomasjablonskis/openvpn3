@@ -80,9 +80,8 @@ class StaticKey
         return base64->encode(key_data_);
     }
 
-    void init_from_rng(RandomAPI &rng, const size_t key_size)
+    void init_from_rng(StrongRandomAPI &rng, const size_t key_size)
     {
-        rng.assert_crypto();
         key_data_.init(key_size, key_t::DESTRUCT_ZERO);
         rng.rand_bytes(key_data_.data(), key_size);
         key_data_.set_size(key_size);
@@ -166,7 +165,7 @@ class OpenVPNStaticKey
         }
         if (in_body || data.size() != KEY_SIZE)
             throw static_key_parse_error();
-        key_data_ = data;
+        key_data_ = std::move(data);
     }
 
     std::string render() const

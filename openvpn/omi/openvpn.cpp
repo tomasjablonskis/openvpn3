@@ -69,7 +69,7 @@ class Client : public ClientAPI::OpenVPNClient
     }
 
   private:
-    bool socket_protect(int socket, std::string remote, bool ipv6) override
+    bool socket_protect(openvpn_io::detail::socket_type socket, std::string remote, bool ipv6) override
     {
         return true;
     }
@@ -83,6 +83,7 @@ class Client : public ClientAPI::OpenVPNClient
     virtual void log(const ClientAPI::LogInfo &msg) override;
     virtual void external_pki_cert_request(ClientAPI::ExternalPKICertRequest &certreq) override;
     virtual void external_pki_sign_request(ClientAPI::ExternalPKISignRequest &signreq) override;
+    virtual void acc_event(const openvpn::ClientAPI::AppCustomControlMessageEvent &event) override;
 
     OMI *parent;
 };
@@ -167,6 +168,11 @@ class OMI : public OMICore, public ClientAPI::LogReceiver
     void external_pki_cert_request(ClientAPI::ExternalPKICertRequest &certreq)
     {
         // not currently supported, <cert> must be in config
+    }
+
+    virtual void acc_event(const openvpn::ClientAPI::AppCustomControlMessageEvent &event)
+    {
+        // ignored
     }
 
     void external_pki_sign_request(ClientAPI::ExternalPKISignRequest &signreq)
@@ -648,7 +654,7 @@ class OMI : public OMICore, public ClientAPI::LogReceiver
             if (thread)
                 thread->join(); // may throw if thread has already exited
         }
-        catch (const std::exception &e)
+        catch (const std::exception &)
         {
         }
     }
@@ -1041,6 +1047,12 @@ void Client::external_pki_sign_request(ClientAPI::ExternalPKISignRequest &signre
 {
     parent->external_pki_sign_request(signreq);
 }
+
+void Client::acc_event(const openvpn::ClientAPI::AppCustomControlMessageEvent &event)
+{
+    parent->acc_event(event);
+}
+
 
 int run(OptionList opt)
 {

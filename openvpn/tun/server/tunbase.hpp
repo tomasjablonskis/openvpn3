@@ -83,7 +83,7 @@ struct Recv : public virtual RC<thread_unsafe_refcount>
     // push a halt or restart message to client
     virtual void push_halt_restart_msg(const HaltRestart::Type type,
                                        const std::string &reason,
-                                       const bool tell_client) = 0;
+                                       const std::string &client_reason) = 0;
     // clang-format on
 };
 
@@ -113,7 +113,7 @@ struct Factory : public RC<thread_unsafe_refcount>
 {
     typedef RCPtr<Factory> Ptr;
 
-    virtual Send::Ptr new_obj(Recv *parent) = 0;
+    virtual Send::Ptr new_tun_obj(Recv *parent) = 0;
 };
 
 } // namespace TunClientInstance

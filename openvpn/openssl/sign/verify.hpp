@@ -25,12 +25,15 @@
 #define OPENVPN_OPENSSL_SIGN_VERIFY_H
 
 #include <string>
+#include <list>
 
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
 
 #include <openvpn/common/cleanup.hpp>
+#include <openvpn/common/numeric_cast.hpp>
 #include <openvpn/common/base64.hpp>
+#include <openvpn/buffer/buffer.hpp>
 #include <openvpn/openssl/pki/x509.hpp>
 #include <openvpn/openssl/util/error.hpp>
 
@@ -58,9 +61,6 @@ inline void verify(const OpenSSLPKI::X509 &cert,
 	    EVP_PKEY_free(pkey);
 	  if (md_ctx)
 	    {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	      EVP_MD_CTX_cleanup(md_ctx);
-#endif
 	      EVP_MD_CTX_free(md_ctx);
 	    } });
 
@@ -91,7 +91,7 @@ inline void verify(const OpenSSLPKI::X509 &cert,
     // verify signature
     EVP_VerifyInit(md_ctx, dig);
     EVP_VerifyUpdate(md_ctx, data.c_str(), data.length());
-    if (EVP_VerifyFinal(md_ctx, binsig.c_data(), binsig.length(), pkey) != 1)
+    if (EVP_VerifyFinal(md_ctx, binsig.c_data(), numeric_cast<unsigned int>(binsig.length()), pkey) != 1)
         throw OpenSSLException("OpenSSLSign::verify: verification failed");
 }
 } // namespace OpenSSLSign

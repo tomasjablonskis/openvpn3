@@ -368,7 +368,7 @@ class TestProto : public ProtoContext
 
     OPENVPN_EXCEPTION(session_invalidated);
 
-    TestProto(const Base::Config::Ptr &config,
+    TestProto(const Base::ProtoConfig::Ptr &config,
               const SessionStats::Ptr &stats)
         : Base(config, stats),
           control_drought("control", config->now),
@@ -602,7 +602,7 @@ class TestProtoClient : public TestProto
     typedef TestProto Base;
 
   public:
-    TestProtoClient(const Base::Config::Ptr &config,
+    TestProtoClient(const Base::ProtoConfig::Ptr &config,
                     const SessionStats::Ptr &stats)
         : Base(config, stats)
     {
@@ -625,7 +625,7 @@ class TestProtoServer : public TestProto
   public:
     OPENVPN_SIMPLE_EXCEPTION(auth_failed);
 
-    TestProtoServer(const Base::Config::Ptr &config,
+    TestProtoServer(const Base::ProtoConfig::Ptr &config,
                     const SessionStats::Ptr &stats)
         : Base(config, stats)
     {
@@ -732,7 +732,7 @@ class NoisyWire
                     }
 #endif
                 }
-                catch (const std::exception &e)
+                catch ([[maybe_unused]] const std::exception &e)
                 {
 #ifdef VERBOSE
                     std::cout << now->raw() << " " << title << " Exception on data channel decrypt: " << e.what() << std::endl;
@@ -803,7 +803,7 @@ class NoisyWire
                 std::cout << now->raw() << " " << title << " Simulating a corrupted packet" << std::endl;
 #endif
                 const size_t pos = random.randrange(bp->size());
-                const unsigned char value = random.randrange(256);
+                const unsigned char value = random.randrange(std::numeric_limits<unsigned char>::max());
                 (*bp)[pos] = value;
             }
 #endif
@@ -879,10 +879,10 @@ int test(const int thread_num)
         Frame::Ptr frame(new Frame(Frame::Context(128, 378, 128, 0, 16, 0)));
 
         // RNG
-        ClientRandomAPI::Ptr rng_cli(new ClientRandomAPI(false));
-        ClientRandomAPI::Ptr prng_cli(new ClientRandomAPI(true));
-        ServerRandomAPI::Ptr rng_serv(new ServerRandomAPI(false));
-        ServerRandomAPI::Ptr prng_serv(new ServerRandomAPI(true));
+        ClientRandomAPI::Ptr rng_cli(new ClientRandomAPI());
+        ClientRandomAPI::Ptr prng_cli(new ClientRandomAPI());
+        ServerRandomAPI::Ptr rng_serv(new ServerRandomAPI());
+        ServerRandomAPI::Ptr prng_serv(new ServerRandomAPI());
         MTRand rng_noncrypto;
 
         // init simulated time
@@ -904,6 +904,7 @@ int test(const int thread_num)
         ClientSSLAPI::Config::Ptr cc(new ClientSSLAPI::Config());
         cc->set_mode(Mode(Mode::CLIENT));
         cc->set_frame(frame);
+        cc->set_rng(rng_cli);
 #ifdef USE_APPLE_SSL
         cc->load_identity("etest");
 #else
@@ -915,7 +916,6 @@ int test(const int thread_num)
 #ifdef VERBOSE
         cc->set_debug_level(1);
 #endif
-        cc->set_rng(rng_cli);
 
         // stats
         MySessionStats::Ptr cli_stats(new MySessionStats);
@@ -923,7 +923,7 @@ int test(const int thread_num)
 
         // client ProtoContext config
         typedef ProtoContext ClientProtoContext;
-        ClientProtoContext::Config::Ptr cp(new ClientProtoContext::Config);
+        ClientProtoContext::ProtoConfig::Ptr cp(new ClientProtoContext::ProtoConfig);
         cp->ssl_factory = cc->new_factory();
         CryptoAlgs::allow_default_dc_algs<ClientCryptoAPI>(cp->ssl_factory->libctx(), false, false);
         cp->dc.set_factory(new CryptoDCSelect<ClientCryptoAPI>(cp->ssl_factory->libctx(), frame, cli_stats, prng_cli));
@@ -965,7 +965,7 @@ int test(const int thread_num)
             tls_crypt_v2_key.extract_key(cp->tls_key);
             tls_crypt_v2_key.extract_wkc(cp->wkc);
         }
-        cp->tls_crypt_ = ClientProtoContext::Config::TLSCrypt::V2;
+        cp->tls_crypt_ = ClientProtoContext::ProtoConfig::TLSCrypt::V2;
 #endif
         cp->pid_mode = PacketIDReceive::UDP_MODE;
 #if defined(HANDSHAKE_WINDOW)
@@ -1001,19 +1001,19 @@ int test(const int thread_num)
         ClientSSLAPI::Config::Ptr sc(new ClientSSLAPI::Config());
         sc->set_mode(Mode(Mode::SERVER));
         sc->set_frame(frame);
+        sc->set_rng(rng_serv);
         sc->load_ca(ca_crt, true);
         sc->load_cert(server_crt);
         sc->load_private_key(server_key);
         sc->load_dh(dh_pem);
         sc->set_tls_version_min(TLS_VER_MIN);
-        sc->set_rng(rng_serv);
 #ifdef VERBOSE
         sc->set_debug_level(1);
 #endif
 
         // server ProtoContext config
         typedef ProtoContext ServerProtoContext;
-        ServerProtoContext::Config::Ptr sp(new ServerProtoContext::Config);
+        ServerProtoContext::ProtoConfig::Ptr sp(new ServerProtoContext::ProtoConfig);
         sp->ssl_factory = sc->new_factory();
         sp->dc.set_factory(new CryptoDCSelect<ServerCryptoAPI>(sp->ssl_factory->libctx(), frame, serv_stats, prng_serv));
         sp->tlsprf_factory.reset(new CryptoTLSPRFFactory<ServerCryptoAPI>());
@@ -1054,7 +1054,7 @@ int test(const int thread_num)
         }
         sp->set_tls_crypt_algs();
         sp->tls_crypt_metadata_factory.reset(new CryptoTLSCryptMetadataFactory());
-        sp->tls_crypt_ = ClientProtoContext::Config::TLSCrypt::V2;
+        sp->tls_crypt_ = ClientProtoContext::ProtoConfig::TLSCrypt::V2;
 #endif
         sp->pid_mode = PacketIDReceive::UDP_MODE;
 #if defined(HANDSHAKE_WINDOW)

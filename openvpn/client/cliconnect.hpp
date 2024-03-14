@@ -272,6 +272,23 @@ class ClientConnect : ClientProto::NotifyCallback,
 		     self->post_cc_msg(msg); });
     }
 
+    void send_app_control_channel_msg(std::string protocol, std::string msg)
+    {
+        if (!halt && client)
+            client->post_app_control_message(std::move(protocol), std::move(msg));
+    }
+
+    void thread_safe_send_app_control_channel_msg(std::string protocol, std::string msg)
+    {
+        if (!halt)
+        {
+            openvpn_io::post(io_context, [self = Ptr(this), protocol = std::move(protocol), msg = std::move(msg)]()
+                             {
+                OPENVPN_ASYNC_HANDLER;
+                self->send_app_control_channel_msg(protocol, msg); });
+        }
+    }
+
     ~ClientConnect()
     {
         stop();
@@ -596,6 +613,22 @@ class ClientConnect : ClientProto::NotifyCallback,
                         ClientEvent::Base::Ptr ev = new ClientEvent::RelayError(client->fatal_reason());
                         client_options->events().add_event(std::move(ev));
                         client_options->stats().error(Error::RELAY_ERROR);
+                        stop();
+                    }
+                    break;
+                case Error::COMPRESS_ERROR:
+                    {
+                        ClientEvent::Base::Ptr ev = new ClientEvent::CompressError(client->fatal_reason());
+                        client_options->events().add_event(std::move(ev));
+                        client_options->stats().error(Error::COMPRESS_ERROR);
+                        stop();
+                    }
+                    break;
+                case Error::NTLM_MISSING_CRYPTO:
+                    {
+                        ClientEvent::Base::Ptr ev = new ClientEvent::NtlmMissingCryptoError(client->fatal_reason());
+                        client_options->events().add_event(std::move(ev));
+                        client_options->stats().error(Error::NTLM_MISSING_CRYPTO);
                         stop();
                     }
                     break;

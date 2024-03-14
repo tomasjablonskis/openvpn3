@@ -37,13 +37,25 @@ inline Json::Value read_fast(const std::string &fn,
     return parse_from_buffer(*bp, fn);
 }
 
+inline Json::Value read_fast_dict(const std::string &fn,
+                                  const bool optional = true,
+                                  std::uint64_t *mtime_ns = nullptr)
+{
+    Json::Value jret = read_fast(fn, optional, mtime_ns);
+    if (!jret)
+        return jret;
+    if (!jret.isObject())
+        throw json_parse("read_fast_dict: json file " + fn + " does not contain a top-level dictionary");
+    return jret;
+}
+
 inline void write_atomic(const std::string &fn,
                          const std::string &tmpdir,
                          const mode_t mode,
                          const std::uint64_t mtime_ns, // set explicit modification-time in nanoseconds since epoch, or 0 to defer to system
                          const Json::Value &root,
                          const size_t size_hint,
-                         RandomAPI &rng)
+                         StrongRandomAPI &rng)
 {
     BufferPtr bp = new BufferAllocated(size_hint, BufferAllocated::GROW);
     format_compact(root, *bp);

@@ -413,7 +413,7 @@ inline std::string reduce_spaces(const std::string &str, const char rep)
 }
 
 // generate a string with n instances of char c
-inline std::string repeat(const char c, int n)
+inline std::string repeat(const char c, size_t n)
 {
     std::string ret;
     ret.reserve(n);
@@ -423,7 +423,7 @@ inline std::string repeat(const char c, int n)
 }
 
 // generate a string with spaces
-inline std::string spaces(int n)
+inline std::string spaces(size_t n)
 {
     return repeat(' ', n);
 }
@@ -525,10 +525,13 @@ inline std::vector<std::string> split(const std::string &str,
     return ret;
 }
 
-inline std::string join(const std::vector<std::string> &strings,
+template <class T>
+inline std::string join(const T &strings,
                         const std::string &delim,
                         const bool tail = false)
 {
+    /* ensure we have a container with strings as values */
+    static_assert(std::is_same_v<typename T::value_type, std::string>);
     std::string ret;
     bool first = true;
     for (const auto &s : strings)
@@ -668,6 +671,20 @@ inline std::string remove_blanks(const std::string &str)
     }
     if (!ret.empty() && !ends_with_newline(ret))
         ret += '\n';
+    return ret;
+}
+
+// copy str to the return value, removing all instances of
+// chars that match remove
+inline std::string remove_char(const std::string &str, const char remove)
+{
+    std::string ret;
+    ret.reserve(str.length());
+    for (const auto c : str)
+    {
+        if (c != remove)
+            ret.push_back(c);
+    }
     return ret;
 }
 

@@ -132,16 +132,7 @@ class Options : public RC<thread_safe_refcount>
             set_proxy_server(hp->get(1, 256), hp->get(2, 16));
 
             // get creds
-            {
-                std::vector<std::string> user_pass;
-                if (UserPass::parse(opt, "http-proxy-user-pass", 0, &user_pass))
-                {
-                    if (user_pass.size() >= 1)
-                        username = user_pass[0];
-                    if (user_pass.size() >= 2)
-                        password = user_pass[1];
-                }
-            }
+            UserPass::parse(opt, "http-proxy-user-pass", 0, username, password);
 
             const std::string auth = hp->get_optional(3, 16);
             if (!auth.empty())
@@ -228,7 +219,7 @@ class ClientConfig : public TransportClientFactory
 
     Options::Ptr http_proxy_options;
 
-    RandomAPI::Ptr rng; // random data source
+    StrongRandomAPI::Ptr rng; // random data source
 
     DigestFactory::Ptr digest_factory; // needed by proxy auth methods
 
@@ -257,7 +248,7 @@ class Client : public TransportClient, AsyncResolvableTCP
 {
     typedef RCPtr<Client> Ptr;
 
-    typedef TCPTransport::Link<openvpn_io::ip::tcp, Client *, false> LinkImpl;
+    typedef TCPTransport::TCPLink<openvpn_io::ip::tcp, Client *, false> LinkImpl;
 
     friend class ClientConfig; // calls constructor
     friend LinkImpl::Base;     // calls tcp_read_handler
@@ -323,7 +314,7 @@ class Client : public TransportClient, AsyncResolvableTCP
     {
     }
 
-    unsigned int transport_send_queue_size() override
+    size_t transport_send_queue_size() override
     {
         if (impl)
             return impl->send_queue_size();
@@ -742,7 +733,6 @@ class Client : public TransportClient, AsyncResolvableTCP
 
             // generate a client nonce
             unsigned char cnonce_raw[8];
-            config->rng->assert_crypto();
             config->rng->rand_bytes(cnonce_raw, sizeof(cnonce_raw));
             const std::string cnonce = render_hex(cnonce_raw, sizeof(cnonce_raw));
 
@@ -872,7 +862,15 @@ class Client : public TransportClient, AsyncResolvableTCP
         }
         catch (const std::exception &e)
         {
-            proxy_error(Error::PROXY_ERROR, std::string("NTLM Auth: ") + e.what());
+            std::string what{e.what()};
+            if (what.find("openssl_digest_error") != std::string::npos)
+            {
+                proxy_error(Error::NTLM_MISSING_CRYPTO, "Crypto primitives required for NTLM authentication are unavailable");
+            }
+            else
+            {
+                proxy_error(Error::PROXY_ERROR, std::string("NTLM Auth: ") + e.what());
+            }
         }
     }
 

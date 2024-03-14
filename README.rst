@@ -295,11 +295,11 @@ for callbacks including event and logging notifications:
         ...
     };
 
-To start the client, first create a :code:`ClientAPI::Config` object
+To start the client, first create a :code:`ClientAPI::ProtoConfig` object
 and initialize it with the OpenVPN config file and other options:
 ::
 
-    ClientAPI::Config config;
+    ClientAPI::ProtoConfig config;
     config.content = <config_file_content_as_multiline_string>;
     ...
 
@@ -480,13 +480,12 @@ Here is a brief set of guidelines:
 
 * When grabbing random entropy that is to be used
   for cryptographic purposes (i.e. for keys, tokens, etc.),
-  always ensure that the RNG is crypto-grade by calling
-  :code:`assert_crypto()` on the RNG.  This will throw
-  an exception if the RNG is not crypto-grade:
+  always ensure that the RNG is crypto-grade by using
+  :code:`class StrongRandomAPI` as the RNG type:
   ::
 
-    void set_rng(RandomAPI::Ptr rng_arg) {
-        rng_arg->assert_crypto();
+    StrongRandomAPI::Ptr rng;
+    void set_rng(StrongRandomAPI::Ptr rng_arg) {
         rng = std::move(rng_arg);
     }
 

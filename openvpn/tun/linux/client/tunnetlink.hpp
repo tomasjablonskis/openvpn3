@@ -30,6 +30,7 @@
 #include <openvpn/asio/asioerr.hpp>
 #include <openvpn/netconf/linux/gwnetlink.hpp>
 #include <openvpn/common/action.hpp>
+#include <openvpn/common/numeric_cast.hpp>
 #include <openvpn/tun/builder/setup.hpp>
 #include <openvpn/tun/client/tunbase.hpp>
 #include <openvpn/tun/client/tunconfigflags.hpp>
@@ -67,15 +68,13 @@ struct NetlinkLinkSet : public Action
 
     virtual void execute(std::ostream &os) override
     {
-        int ret;
-
         if (dev.empty())
         {
             os << "Error: can't call NetlinkLinkSet with no interface" << std::endl;
             return;
         }
 
-        ret = SITNL::net_iface_mtu_set(dev, mtu);
+        auto ret = SITNL::net_iface_mtu_set(dev, mtu);
         if (ret)
         {
             os << "Error while executing NetlinkLinkSet " << dev << " mtu " << mtu
@@ -112,7 +111,7 @@ struct NetlinkAddr4 : public Action
 
     NetlinkAddr4(std::string dev_arg,
                  IPv4::Addr &addr_arg,
-                 int prefixlen_arg,
+                 unsigned char prefixlen_arg,
                  IPv4::Addr &broadcast_arg,
                  bool add_arg)
         : dev(dev_arg),
@@ -136,14 +135,13 @@ struct NetlinkAddr4 : public Action
 
     virtual void execute(std::ostream &os) override
     {
-        int ret;
-
         if (dev.empty())
         {
             os << "Error: can't call NetlinkAddr4 with no interface" << std::endl;
             return;
         }
 
+        int ret;
         if (add)
         {
             ret = SITNL::net_addr_add(dev, addr, prefixlen, broadcast);
@@ -171,7 +169,7 @@ struct NetlinkAddr4 : public Action
 
     std::string dev;
     IPv4::Addr addr;
-    int prefixlen = 0;
+    unsigned char prefixlen = 0;
     IPv4::Addr broadcast;
     bool add = true;
 };
@@ -186,7 +184,7 @@ struct NetlinkAddr6 : public Action
 
     NetlinkAddr6(std::string dev_arg,
                  IPv6::Addr &addr_arg,
-                 int prefixlen_arg,
+                 unsigned char prefixlen_arg,
                  bool add_arg)
         : dev(dev_arg),
           addr(addr_arg),
@@ -207,14 +205,13 @@ struct NetlinkAddr6 : public Action
 
     virtual void execute(std::ostream &os) override
     {
-        int ret;
-
         if (dev.empty())
         {
             os << "Error: can't call NetlinkAddr6 with no interface" << std::endl;
             return;
         }
 
+        int ret;
         if (add)
         {
             ret = SITNL::net_addr_add(dev, addr, prefixlen);
@@ -241,7 +238,7 @@ struct NetlinkAddr6 : public Action
 
     std::string dev;
     IPv6::Addr addr;
-    int prefixlen = 0;
+    unsigned char prefixlen = 0;
     bool add = true;
 };
 
@@ -276,14 +273,13 @@ struct NetlinkAddr4PtP : public Action
 
     virtual void execute(std::ostream &os) override
     {
-        int ret;
-
         if (dev.empty())
         {
             os << "Error: can't call NetlinkAddr4PtP with no interface" << std::endl;
             return;
         }
 
+        int ret;
         if (add)
         {
             ret = SITNL::net_addr_ptp_add(dev, local, remote);
@@ -343,14 +339,13 @@ struct NetlinkRoute4 : public Action
 
     virtual void execute(std::ostream &os) override
     {
-        int ret;
-
         if (dev.empty())
         {
             os << "Error: can't call NetlinkRoute4 with no interface" << std::endl;
             return;
         }
 
+        int ret;
         if (add)
         {
             ret = SITNL::net_route_add(route, gw, dev, 0, 0);
@@ -412,14 +407,13 @@ struct NetlinkRoute6 : public Action
 
     virtual void execute(std::ostream &os) override
     {
-        int ret;
-
         if (dev.empty())
         {
             os << "Error: can't call NetlinkRoute6 with no interface" << std::endl;
             return;
         }
 
+        int ret;
         if (add)
         {
             ret = SITNL::net_route_add(route, gw, dev, 0, 0);

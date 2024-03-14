@@ -284,7 +284,7 @@ class ParseClientConfig
                 if (options.exists("push-peer-info"))
                     pushPeerInfo_ = true;
                 if (pushPeerInfo_)
-                    peerInfoUV_ = peer_info_uv;
+                    peerInfoUV_ = std::move(peer_info_uv);
             }
 
             // dev name
@@ -298,10 +298,10 @@ class ParseClientConfig
 
             // protocol configuration
             {
-                protoConfig.reset(new ProtoContext::Config());
+                protoConfig.reset(new ProtoContext::ProtoConfig());
                 protoConfig->tls_auth_factory.reset(new CryptoOvpnHMACFactory<SSLLib::CryptoAPI>());
                 protoConfig->tls_crypt_factory.reset(new CryptoTLSCryptFactory<SSLLib::CryptoAPI>());
-                protoConfig->load(options, ProtoContextOptions(), -1, false);
+                protoConfig->load(options, ProtoContextCompressionOptions(), -1, false);
             }
 
             unsigned int lflags = SSLConfigAPI::LF_PARSE_MODE;
@@ -310,6 +310,7 @@ class ParseClientConfig
             try
             {
                 sslConfig.reset(new SSLLib::SSLAPI::Config());
+                sslConfig->set_rng(new SSLLib::RandomAPI());
                 sslConfig->load(options, lflags);
             }
             catch (...)
@@ -358,7 +359,7 @@ class ParseClientConfig
             if (content_list)
             {
                 content_list->preprocess();
-                options.parse_from_key_value_list(*content_list, &limits);
+                options.parse_from_key_value_list(*content_list, "OVPN_ACCESS_SERVER", &limits);
             }
             process_setenv_opt(options);
             options.update_map();
@@ -367,7 +368,7 @@ class ParseClientConfig
             bool added = false;
 
             // client
-            if (!options.exists("client"))
+            if (options.exists("tls-client") && options.exists("pull"))
             {
                 Option opt;
                 opt.push_back("client");
@@ -792,7 +793,7 @@ class ParseClientConfig
     RemoteList::Ptr remoteList;
     RemoteItem firstRemoteListItem_;
     PeerInfo::Set::Ptr peerInfoUV_;
-    ProtoContext::Config::Ptr protoConfig;
+    ProtoContext::ProtoConfig::Ptr protoConfig;
     SSLLib::SSLAPI::Config::Ptr sslConfig;
     std::string dev;
     std::string windowsDriver_;
